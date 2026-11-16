@@ -1,0 +1,60 @@
+item_id,name_en,name_hi,category,unit,unit_hi,pack_hi,pack_qty,cost,price,mrp,daily_qty,shelf_days,restock,typical_qty,festival_tags
+atta,Wheat flour,आटा,staples,kg,किलो,बोरी,50,32,36,0,12,0,biweekly,2,diwali:1.3
+rice,Rice,चावल,staples,kg,किलो,बोरी,25,40,46,0,6,0,biweekly,2,
+rice_basmati,Basmati rice,बासमती चावल,staples,kg,किलो,बोरी,25,85,100,0,1,0,biweekly,1,diwali:1.8|eid:2
+sugar,Sugar,चीनी,staples,kg,किलो,बोरी,50,42,45,0,8,0,biweekly,1,diwali:1.6|holi:1.5|raksha:1.4|eid:1.5
+jaggery,Jaggery,गुड़,staples,kg,किलो,पेटी,20,48,55,0,1,0,biweekly,0.5,sankranti:3|ganesh:1.5
+toor_dal,Toor dal,अरहर दाल,staples,kg,किलो,बोरी,30,130,145,0,2,0,biweekly,1,
+moong_dal,Moong dal,मूंग दाल,staples,kg,किलो,बोरी,30,110,125,0,1,0,biweekly,0.5,
+chana_dal,Chana dal,चना दाल,staples,kg,किलो,बोरी,30,85,98,0,1.2,0,biweekly,0.5,diwali:1.4
+masoor_dal,Masoor dal,मसूर दाल,staples,kg,किलो,बोरी,30,90,102,0,0.8,0,biweekly,0.5,
+besan,Gram flour,बेसन,staples,kg,किलो,बोरी,25,85,100,0,1,0,biweekly,0.5,diwali:1.8|holi:1.8
+poha,Poha,पोहा,staples,kg,किलो,बोरी,25,50,60,0,2,0,biweekly,1,
+suji,Semolina,सूजी,staples,kg,किलो,बोरी,25,42,50,0,1,0,biweekly,0.5,diwali:1.6|raksha:1.4
+maida,Refined flour,मैदा,staples,kg,किलो,बोरी,25,38,45,0,1,0,biweekly,0.5,diwali:1.8|holi:1.8
+sabudana,Sabudana,साबूदाना,staples,kg,किलो,बोरी,25,70,82,0,0.4,0,biweekly,0.5,navratri:3
+peanuts,Peanuts,मूंगफली,staples,kg,किलो,बोरी,25,120,140,0,0.6,0,biweekly,0.5,navratri:2|sankranti:1.5
+salt,Salt 1kg,नमक,staples,pc,पैकेट,पेटी,25,25,28,1,4,0,biweekly,1,
+mustard_oil,Mustard oil 1L,सरसों तेल,oil,pc,बोतल,पेटी,12,150,170,0,3,0,biweekly,1,diwali:1.5|holi:1.5
+soybean_oil,Soybean oil 1L,सोयाबीन तेल,oil,pc,पाउच,पेटी,12,125,140,0,3,0,biweekly,1,diwali:1.5|holi:1.5
+ghee,Ghee 500ml,घी,oil,pc,डिब्बा,पेटी,12,300,330,1,0.3,0,biweekly,1,diwali:2|raksha:1.8|navratri:1.5
+tea,Tea 250g,चायपत्ती,beverages,pc,पैकेट,पेटी,24,105,120,1,2,0,biweekly,1,
+milk,Milk 500ml,दूध,dairy,pc,पैकेट,क्रेट,24,27,29,1,40,2,daily,2,diwali:1.3|raksha:1.3
+curd,Curd 400g,दही,dairy,pc,पैकेट,क्रेट,12,32,35,1,6,3,daily,1,
+paneer,Paneer 200g,पनीर,dairy,pc,पैकेट,डिब्बा,5,75,85,1,2,3,daily,1,diwali:1.5|raksha:1.5
+bread,Bread,ब्रेड,bakery,pc,पैकेट,क्रेट,12,38,45,1,6,4,daily,1,
+eggs,Eggs,अंडा,dairy,pc,नग,ट्रे,30,6,7,0,30,12,alt,6,navratri:0.3
+butter,Butter 100g,मक्खन,dairy,pc,पैकेट,पेटी,20,55,58,1,1,60,biweekly,1,
+parle_g,Parle-G 5rs,पारले-जी,snacks,pc,पैकेट,पेटी,48,4.4,5,1,25,0,biweekly,2,
+cream_biscuit,Cream biscuit 10rs,क्रीम बिस्किट,snacks,pc,पैकेट,पेटी,24,8.6,10,1,10,0,biweekly,1,
+namkeen,Namkeen 10rs,नमकीन,snacks,pc,पैकेट,पेटी,24,8.3,10,1,15,0,biweekly,2,diwali:1.5|holi:1.5
+chips,Chips 10rs,चिप्स,snacks,pc,पैकेट,पेटी,24,8.2,10,1,15,0,biweekly,2,
+noodles,Noodles 14rs,मैगी,snacks,pc,पैकेट,पेटी,48,12.2,14,1,10,0,biweekly,2,
+cold_drink,Cold drink 750ml,कोल्ड ड्रिंक,beverages,pc,बोतल,क्रेट,24,34,40,1,4,0,biweekly,1,holi:2
+water,Water 1L,पानी बोतल,beverages,pc,बोतल,पेटी,12,15,20,1,6,0,biweekly,1,
+bath_soap,Bath soap,नहाने का साबुन,personal,pc,नग,पेटी,24,30,35,1,3,0,biweekly,1,
+toothpaste,Toothpaste 100g,टूथपेस्ट,personal,pc,नग,पेटी,12,50,58,1,1.5,0,biweekly,1,
+shampoo,Shampoo sachet 2rs,शैम्पू पाउच,personal,pc,नग,पेटी,96,1.65,2,1,20,0,biweekly,4,
+detergent,Detergent 1kg,सर्फ़,household,pc,पैकेट,पेटी,10,110,125,1,1.5,0,biweekly,1,diwali:1.5
+washing_bar,Washing bar,कपड़े धोने का साबुन,household,pc,नग,पेटी,20,9,10,1,5,0,biweekly,2,
+dish_bar,Dishwash bar,बर्तन साबुन,household,pc,नग,पेटी,20,9,10,1,4,0,biweekly,1,
+phenyl,Phenyl 1L,फिनाइल,household,pc,बोतल,पेटी,12,45,55,1,0.5,0,biweekly,1,diwali:3
+broom,Broom,झाड़ू,household,pc,नग,गट्ठर,10,70,90,0,0.3,0,biweekly,1,diwali:4
+matchbox,Matchbox,माचिस,household,pc,नग,पेटी,50,1.6,2,1,6,0,biweekly,2,diwali:2
+agarbatti,Incense sticks,अगरबत्ती,pooja,pc,पैकेट,पेटी,12,16,20,1,3,0,biweekly,1,diwali:2.5|navratri:2|ganesh:2
+candle,Candle,मोमबत्ती,pooja,pc,पैकेट,पेटी,24,8,10,1,1,0,biweekly,1,diwali:6
+coconut,Coconut,नारियल,pooja,pc,नग,बोरी,25,30,38,0,2,20,alt,1,navratri:3|ganesh:3|diwali:2
+dry_fruits,Dry fruit mix 200g,मेवा,dryfruits,pc,पैकेट,पेटी,10,180,210,0,0.3,0,biweekly,1,diwali:5|raksha:3|eid:3
+dates,Dates 500g,खजूर,dryfruits,pc,पैकेट,पेटी,10,90,110,0,0.2,0,biweekly,1,ramzan:6
+vermicelli,Vermicelli 400g,सेवई,staples,pc,पैकेट,पेटी,20,35,42,1,0.5,0,biweekly,1,eid:5
+turmeric,Turmeric 100g,हल्दी,spices,pc,पैकेट,पेटी,20,22,26,1,2,0,biweekly,1,
+chilli_powder,Chilli powder 100g,लाल मिर्च,spices,pc,पैकेट,पेटी,20,28,32,1,2,0,biweekly,1,
+coriander_powder,Coriander powder 100g,धनिया पाउडर,spices,pc,पैकेट,पेटी,20,20,24,1,1.5,0,biweekly,1,
+garam_masala,Garam masala 50g,गरम मसाला,spices,pc,पैकेट,पेटी,20,40,45,1,1,0,biweekly,1,diwali:1.5
+jeera,Cumin 100g,जीरा,spices,pc,पैकेट,पेटी,20,45,52,1,1,0,biweekly,1,
+rai,Mustard seed 100g,राई,spices,pc,पैकेट,पेटी,20,12,15,1,1,0,biweekly,1,
+soya_chunks,Soya chunks 200g,सोया बड़ी,staples,pc,पैकेट,पेटी,20,24,30,1,1,0,biweekly,1,
+onion,Onion,प्याज,vegetables,kg,किलो,बोरी,50,28,35,0,8,20,alt,1,
+potato,Potato,आलू,vegetables,kg,किलो,बोरी,50,22,28,0,10,25,alt,1,
+tomato,Tomato,टमाटर,vegetables,kg,किलो,क्रेट,10,25,35,0,5,6,alt,1,
+green_chilli,Green chilli,हरी मिर्च,vegetables,kg,किलो,थैला,1,50,70,0,0.5,5,alt,0.25,

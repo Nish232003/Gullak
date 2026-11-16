@@ -1,0 +1,13 @@
+README.md
+pyproject.toml
+src/gullak/__init__.py
+src/gullak.egg-info/PKG-INFO
+src/gullak.egg-info/SOURCES.txt
+src/gullak.egg-info/dependency_links.txt
+src/gullak.egg-info/requires.txt
+src/gullak.egg-info/top_level.txt
+src/gullak/synth/__init__.py
+src/gullak/synth/__main__.py
+src/gullak/synth/generator.py
+src/gullak/synth/kit.py
+tests/test_synth.py
