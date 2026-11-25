@@ -7,7 +7,9 @@ from typing import Any
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
+from gullak.i18n import SUPPORTED_LANGUAGES
 from gullak.pipeline.contracts import ExtractedLine, ExtractedPage, PhotoKind
+from gullak.pipeline.matching import CatalogItem
 from gullak.pipeline.store import GullakStore
 
 
@@ -16,6 +18,25 @@ class CreateShopRequest(BaseModel):
     user_id: str = "owner-1"
     name: str
     shop_type: str = "retail"
+    language: str = "en"
+    seed_catalog: bool | None = None
+
+
+class UpdateLanguageRequest(BaseModel):
+    language: str
+
+
+class AddItemRequest(BaseModel):
+    item_id: str
+    name_en: str
+    name_local: str = ""
+    base_unit: str = "pc"
+    pack_qty: float = 1.0
+
+
+class AddAliasRequest(BaseModel):
+    alias_text: str
+    item_id: str
 
 
 class ApproveBillRequest(BaseModel):
@@ -36,19 +57,31 @@ def create_app(raw_dir: Path | None = None, seed_reference: bool = True) -> Fast
     def health() -> dict[str, str]:
         return {"status": "ok"}
 
+    @app.get("/languages")
+    def list_languages() -> dict[str, str]:
+        return SUPPORTED_LANGUAGES
+
     @app.post("/shops")
     def create_shop(req: CreateShopRequest) -> dict[str, str]:
+        if req.language not in SUPPORTED_LANGUAGES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported language '{req.language}'. Supported: {list(SUPPORTED_LANGUAGES)}",
+            )
         shop = store.create_shop(
             shop_id=req.shop_id,
             user_id=req.user_id,
             name=req.name,
             shop_type=req.shop_type,
+            language=req.language,
+            seed_catalog=req.seed_catalog,
         )
         return {
             "shop_id": shop.shop_id,
             "user_id": shop.user_id,
             "name": shop.name,
             "shop_type": shop.shop_type,
+            "language": shop.language,
         }
 
     @app.get("/shops")
@@ -59,9 +92,45 @@ def create_app(raw_dir: Path | None = None, seed_reference: bool = True) -> Fast
                 "user_id": s.user_id,
                 "name": s.name,
                 "shop_type": s.shop_type,
+                "language": s.language,
             }
             for s in store.shops.values()
         ]
+
+    @app.patch("/shops/{shop_id}/language")
+    def update_language(shop_id: str, req: UpdateLanguageRequest) -> dict[str, str]:
+        try:
+            shop = store.set_shop_language(shop_id=shop_id, language=req.language)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return {"shop_id": shop.shop_id, "language": shop.language}
+
+    @app.post("/shops/{shop_id}/items")
+    def add_item(shop_id: str, req: AddItemRequest) -> dict[str, Any]:
+        item = store.add_shop_item(
+            shop_id,
+            CatalogItem(
+                item_id=req.item_id,
+                name_en=req.name_en,
+                name_hi=req.name_local or req.name_en,
+                base_unit=req.base_unit,
+                pack_qty=req.pack_qty,
+                status="approved",
+            ),
+        )
+        return {
+            "shop_id": shop_id,
+            "item_id": item.item_id,
+            "name_en": item.name_en,
+            "name_local": item.name_hi,
+            "base_unit": item.base_unit,
+            "pack_qty": item.pack_qty,
+        }
+
+    @app.post("/shops/{shop_id}/aliases")
+    def add_alias(shop_id: str, req: AddAliasRequest) -> dict[str, str]:
+        store.add_shop_alias(shop_id=shop_id, alias_text=req.alias_text, item_id=req.item_id)
+        return {"shop_id": shop_id, "alias_text": req.alias_text, "item_id": req.item_id}
 
     @app.post("/ingest/photo")
     async def ingest_photo(
@@ -126,8 +195,8 @@ def create_app(raw_dir: Path | None = None, seed_reference: bool = True) -> Fast
         )
 
     @app.get("/shops/{shop_id}/daily-summary")
-    def daily_summary(shop_id: str, target_date: date) -> dict[str, Any]:
-        return store.get_daily_summary(shop_id=shop_id, target_date=target_date)
+    def daily_summary(shop_id: str, target_date: date, lang: str | None = None) -> dict[str, Any]:
+        return store.get_daily_summary(shop_id=shop_id, target_date=target_date, language=lang)
 
     @app.get("/shops/{shop_id}/lineage/{sale_line_id}")
     def get_lineage(shop_id: str, sale_line_id: str) -> dict[str, Any]:

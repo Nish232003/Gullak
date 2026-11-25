@@ -1,6 +1,6 @@
 # Gullak (गुल्लक)
 
-Shopkeepers keep handwritten sales registers and paper wholesale bills, so they only estimate their daily profit instead of knowing it. **Gullak** turns register and wholesale bill photos into trusted daily profit, best sellers, and actionable restock advice in Hindi.
+Small shopkeepers record sales in handwritten registers and keep paper wholesale bills, leaving them to estimate their daily profit instead of knowing it. **Gullak** turns photos of those registers and bills into accurate daily profit, top-selling items, and clear restock guidance in the owner's chosen language across any shop type.
 
 ## Architecture
 
@@ -71,17 +71,18 @@ Verified with `pytest -v` (18/18 passing) and `python -m gullak.pipeline.runner 
   - Requires page date, positive quantities and amounts, and line sums matching the written total within `₹1`.
   - Flags unit prices deviating by `> 50%` from recent item averages or low-confidence lines (`< 0.70`) to the review queue.
 - **Item Matching (`gullak.pipeline.matching`)**:
-  - Resolves Hindi/English spellings via exact match, shop alias table, and `rapidfuzz` (`WRatio`, threshold `75.0`), converting units (`ग्राम` → `kg`, `मिली` → `l`).
+  - Resolves item spellings in any language via exact match, shop alias table, and `rapidfuzz` (`WRatio`, threshold `75.0`), converting units (`ग्राम` → `kg`, `मिली` → `l`). Supports custom catalogs per shop (`POST /shops/{shop_id}/items`) for any shopkeeper (retail, wholesale, pharmacy, hardware, electronics, kirana, etc.).
 - **FIFO Costing & SCD2 Pricing (`gullak.pipeline.costing`)**:
   - Allocates sales chronologically across oldest `StockLot` records first; sales spanning multiple lots are costed partly at each lot's cost.
   - Sales without sufficient stock lots are marked `cost_missing` rather than guessed.
   - Selling-price updates maintain `valid_from` / `valid_to` SCD Type 2 history.
-- **Restock & Margin Advice (`gullak.advice`)**:
+- **Restock & Margin Advice (`gullak.advice`, `gullak.i18n`)**:
   - **Restock**: Stock left won't cover `days_until_next_trip + buffer_days` (default buffer: `2` days).
   - **Don't restock**: Stock covers `≥ 30` days (overstock), no sales in `14` days, or stock expires within `7` days.
   - **Watch margin**: Selling price is below cost or margin is `≤ 3%`.
+  - **Multi-language output**: Offers English (`en`), Hindi (`hi`), Marathi (`mr`), Gujarati (`gu`), Tamil (`ta`), and Telugu (`te`).
 - **FastAPI Service (`gullak.api.app`)**:
-  - Multi-tenant shop profiles (`/shops`), SHA-256 photo deduplication (`/ingest/photo`), extracted page processing (`/ingest/extracted`), wholesale bill approval (`/bills/{bill_id}/approve`), review queue resolution (`/shops/{shop_id}/review-queue/{review_id}/resolve`), daily summary (`/shops/{shop_id}/daily-summary`), and per-line lineage (`/shops/{shop_id}/lineage/{sale_line_id}`).
+  - Language discovery & switching (`GET /languages`, `PATCH /shops/{shop_id}/language`), multi-tenant shop profiles & custom catalogs (`/shops`, `/shops/{shop_id}/items`, `/shops/{shop_id}/aliases`), SHA-256 photo deduplication (`/ingest/photo`), extracted page processing (`/ingest/extracted`), wholesale bill approval (`/bills/{bill_id}/approve`), review queue resolution (`/shops/{shop_id}/review-queue/{review_id}/resolve`), daily summary (`/shops/{shop_id}/daily-summary`), and per-line lineage (`/shops/{shop_id}/lineage/{sale_line_id}`).
 
 ## Design Decisions & Trade-offs
 

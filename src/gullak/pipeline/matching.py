@@ -117,6 +117,17 @@ class ItemMatcher:
             self.aliases[norm] = item_id
             self._choices[norm] = item_id
 
+    def add_item(self, item: CatalogItem) -> None:
+        """Register or update a catalog item for any shop type."""
+        self.items[item.item_id] = item
+        if item.status == "approved":
+            self.approved_items[item.item_id] = item
+            for candidate in (item.item_id, item.name_hi, item.name_en):
+                key = normalize_text(candidate)
+                if key:
+                    self._exact_map[key] = item.item_id
+        self._rebuild_search_corpus()
+
     @classmethod
     def from_reference_csv(
         cls,

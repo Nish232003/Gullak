@@ -6,6 +6,8 @@ from datetime import date
 from enum import Enum
 from typing import Any
 
+from gullak.i18n import format_advice_message
+
 
 class AdviceType(str, Enum):
     RESTOCK = "restock"
@@ -52,12 +54,15 @@ class AdviceItem:
     reason: str
     message_en: str
     message_hi: str
+    message: str = ""
+    language: str = "en"
     details: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class DailyAdviceSummary:
     as_of: date | None
+    language: str = "en"
     restock: list[AdviceItem] = field(default_factory=list)
     dont_restock: list[AdviceItem] = field(default_factory=list)
     watch_margin: list[AdviceItem] = field(default_factory=list)
@@ -65,6 +70,7 @@ class DailyAdviceSummary:
     def to_dict(self) -> dict[str, Any]:
         return {
             "as_of": self.as_of.isoformat() if self.as_of else None,
+            "language": self.language,
             "restock": [self._item_dict(x) for x in self.restock],
             "dont_restock": [self._item_dict(x) for x in self.dont_restock],
             "watch_margin": [self._item_dict(x) for x in self.watch_margin],
@@ -78,70 +84,82 @@ class DailyAdviceSummary:
             "name_hi": item.name_hi,
             "advice_type": item.advice_type.value,
             "reason": item.reason,
+            "language": item.language,
+            "message": item.message or item.message_en,
             "message_en": item.message_en,
             "message_hi": item.message_hi,
             "details": item.details,
         }
 
 
+def _make_advice(
+    item: ItemInventorySnapshot,
+    advice_type: AdviceType,
+    reason: str,
+    language: str,
+    details: dict[str, Any],
+    **fmt_kwargs: object,
+) -> AdviceItem:
+    display_en = item.name_en or item.name_hi or item.item_id
+    display_hi = item.name_hi or item.name_en or item.item_id
+    display_local = display_en if language == "en" else display_hi
+    return AdviceItem(
+        item_id=item.item_id,
+        name_en=item.name_en,
+        name_hi=item.name_hi,
+        advice_type=advice_type,
+        reason=reason,
+        language=language,
+        message=format_advice_message(language, reason, name=display_local, **fmt_kwargs),
+        message_en=format_advice_message("en", reason, name=display_en, **fmt_kwargs),
+        message_hi=format_advice_message("hi", reason, name=display_hi, **fmt_kwargs),
+        details=details,
+    )
+
+
 def evaluate_item_advice(
     item: ItemInventorySnapshot,
     config: AdviceConfig | None = None,
+    language: str = "en",
 ) -> list[AdviceItem]:
     """Evaluate restock, don't-restock, and margin-warning rules for one item."""
     cfg = config or AdviceConfig()
     results: list[AdviceItem] = []
-
-    display_hi = item.name_hi or item.name_en or item.item_id
-    display_en = item.name_en or item.name_hi or item.item_id
 
     # 1. Watch margin (evaluated independently of inventory status)
     if item.cost > 0 and item.price >= 0:
         margin_vs_cost = (item.price - item.cost) / item.cost
         if item.price < item.cost:
             results.append(
-                AdviceItem(
-                    item_id=item.item_id,
-                    name_en=item.name_en,
-                    name_hi=item.name_hi,
-                    advice_type=AdviceType.WATCH_MARGIN,
-                    reason="below_cost",
-                    message_en=(
-                        f"{display_en}: Selling price (₹{item.price:.2f}) is below cost "
-                        f"(₹{item.cost:.2f})."
-                    ),
-                    message_hi=(
-                        f"{display_hi}: बिक्री मूल्य (₹{item.price:.2f}) लागत "
-                        f"(₹{item.cost:.2f}) से कम है! दाम बढ़ाएं।"
-                    ),
-                    details={
+                _make_advice(
+                    item,
+                    AdviceType.WATCH_MARGIN,
+                    "below_cost",
+                    language,
+                    {
                         "cost": round(item.cost, 2),
                         "price": round(item.price, 2),
                         "margin_pct": round(margin_vs_cost * 100, 2),
                     },
+                    price=item.price,
+                    cost=item.cost,
                 )
             )
         elif margin_vs_cost <= cfg.margin_warning_pct + 1e-9:
             results.append(
-                AdviceItem(
-                    item_id=item.item_id,
-                    name_en=item.name_en,
-                    name_hi=item.name_hi,
-                    advice_type=AdviceType.WATCH_MARGIN,
-                    reason="thin_margin",
-                    message_en=(
-                        f"{display_en}: Margin is only {margin_vs_cost * 100:.1f}% "
-                        f"(cost ₹{item.cost:.2f}, price ₹{item.price:.2f})."
-                    ),
-                    message_hi=(
-                        f"{display_hi}: मार्जिन केवल {margin_vs_cost * 100:.1f}% है "
-                        f"(लागत ₹{item.cost:.2f}, बिक्री ₹{item.price:.2f})।"
-                    ),
-                    details={
+                _make_advice(
+                    item,
+                    AdviceType.WATCH_MARGIN,
+                    "thin_margin",
+                    language,
+                    {
                         "cost": round(item.cost, 2),
                         "price": round(item.price, 2),
                         "margin_pct": round(margin_vs_cost * 100, 2),
                     },
+                    margin_pct=margin_vs_cost * 100,
+                    cost=item.cost,
+                    price=item.price,
                 )
             )
 
@@ -156,48 +174,32 @@ def evaluate_item_advice(
     ):
         dont_restock_triggered = True
         results.append(
-            AdviceItem(
-                item_id=item.item_id,
-                name_en=item.name_en,
-                name_hi=item.name_hi,
-                advice_type=AdviceType.DONT_RESTOCK_EXPIRING,
-                reason="close_to_expiry",
-                message_en=(
-                    f"{display_en}: Stock expires in {item.days_to_expiry} day(s). "
-                    "Clear existing stock, do not restock."
-                ),
-                message_hi=(
-                    f"{display_hi}: स्टॉक {item.days_to_expiry} दिन में एक्सपायर होगा। "
-                    "अभी नया माल न मंगाएं।"
-                ),
-                details={
+            _make_advice(
+                item,
+                AdviceType.DONT_RESTOCK_EXPIRING,
+                "close_to_expiry",
+                language,
+                {
                     "stock": round(item.stock, 3),
                     "days_to_expiry": item.days_to_expiry,
                 },
+                days_to_expiry=item.days_to_expiry,
             )
         )
 
     if item.days_since_last_sale is not None and item.days_since_last_sale >= cfg.no_sale_days:
         dont_restock_triggered = True
         results.append(
-            AdviceItem(
-                item_id=item.item_id,
-                name_en=item.name_en,
-                name_hi=item.name_hi,
-                advice_type=AdviceType.DONT_RESTOCK_NO_SALE,
-                reason="no_recent_sale",
-                message_en=(
-                    f"{display_en}: No sale in the last {item.days_since_last_sale} days. "
-                    "Do not restock."
-                ),
-                message_hi=(
-                    f"{display_hi}: पिछले {item.days_since_last_sale} दिनों से कोई बिक्री नहीं। "
-                    "नया माल न मंगाएं।"
-                ),
-                details={
+            _make_advice(
+                item,
+                AdviceType.DONT_RESTOCK_NO_SALE,
+                "no_recent_sale",
+                language,
+                {
                     "stock": round(item.stock, 3),
                     "days_since_last_sale": item.days_since_last_sale,
                 },
+                days_since_last_sale=item.days_since_last_sale,
             )
         )
 
@@ -205,24 +207,17 @@ def evaluate_item_advice(
     if days_of_cover is not None and days_of_cover >= cfg.overstock_days:
         dont_restock_triggered = True
         results.append(
-            AdviceItem(
-                item_id=item.item_id,
-                name_en=item.name_en,
-                name_hi=item.name_hi,
-                advice_type=AdviceType.DONT_RESTOCK_OVERSTOCK,
-                reason="overstock",
-                message_en=(
-                    f"{display_en}: Stock covers {days_of_cover:.0f} days "
-                    f"(>= {cfg.overstock_days:.0f} days). Do not restock."
-                ),
-                message_hi=(
-                    f"{display_hi}: {days_of_cover:.0f} दिन का स्टॉक बाकी है। "
-                    "अभी और न मंगाएं।"
-                ),
-                details={
+            _make_advice(
+                item,
+                AdviceType.DONT_RESTOCK_OVERSTOCK,
+                "overstock",
+                language,
+                {
                     "stock": round(item.stock, 3),
                     "days_of_cover": round(days_of_cover, 1),
                 },
+                days_of_cover=days_of_cover,
+                overstock_days=cfg.overstock_days,
             )
         )
 
@@ -240,23 +235,14 @@ def evaluate_item_advice(
             deficit = demand_needed - item.stock
             pack_qty = item.pack_qty if item.pack_qty > 0 else 1.0
             suggested_packs = max(1, math.ceil(deficit / pack_qty))
+            unit_label = item.unit if language == "en" else (item.unit_hi or item.unit)
             results.append(
-                AdviceItem(
-                    item_id=item.item_id,
-                    name_en=item.name_en,
-                    name_hi=item.name_hi,
-                    advice_type=AdviceType.RESTOCK,
-                    reason="low_stock",
-                    message_en=(
-                        f"{display_en}: {item.stock:g} {item.unit} left "
-                        f"(covers {days_of_cover:.1f} days, need {target_days:g} days). "
-                        f"Restock {suggested_packs} pack(s)."
-                    ),
-                    message_hi=(
-                        f"{display_hi}: केवल {item.stock:g} {item.unit_hi} बचा है "
-                        f"({days_of_cover:.1f} दिन के लिए)। {suggested_packs} {item.pack_hi} मंगाएं।"
-                    ),
-                    details={
+                _make_advice(
+                    item,
+                    AdviceType.RESTOCK,
+                    "low_stock",
+                    language,
+                    {
                         "stock": round(item.stock, 3),
                         "days_of_cover": round(days_of_cover or 0.0, 2),
                         "target_days": target_days,
@@ -264,6 +250,12 @@ def evaluate_item_advice(
                         "suggested_packs": suggested_packs,
                         "suggested_qty": round(suggested_packs * pack_qty, 2),
                     },
+                    stock=item.stock,
+                    unit=unit_label,
+                    days_of_cover=days_of_cover or 0.0,
+                    target_days=target_days,
+                    suggested_packs=suggested_packs,
+                    pack=item.pack_hi or "pack",
                 )
             )
 
@@ -274,11 +266,12 @@ def generate_daily_advice(
     snapshots: list[ItemInventorySnapshot],
     as_of: date | None = None,
     config: AdviceConfig | None = None,
+    language: str = "en",
 ) -> DailyAdviceSummary:
     """Evaluate all shop items and group advice into restock, don't restock, and watch margin."""
-    summary = DailyAdviceSummary(as_of=as_of)
+    summary = DailyAdviceSummary(as_of=as_of, language=language)
     for snap in snapshots:
-        for advice in evaluate_item_advice(snap, config=config):
+        for advice in evaluate_item_advice(snap, config=config, language=language):
             if advice.advice_type == AdviceType.RESTOCK:
                 summary.restock.append(advice)
             elif advice.advice_type == AdviceType.WATCH_MARGIN:

@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from gullak.advice import AdviceConfig, DailyAdviceSummary, ItemInventorySnapshot, generate_daily_advice
+from gullak.i18n import SUPPORTED_LANGUAGES
 from gullak.pipeline.contracts import (
     ExtractedLine,
     ExtractedPage,
@@ -28,6 +29,7 @@ class ShopProfile:
     user_id: str
     name: str
     shop_type: str = "retail"
+    language: str = "en"
 
 
 @dataclass
@@ -77,10 +79,26 @@ class GullakStore:
         self._seq += 1
         return f"{prefix}-{self._seq:06d}"
 
-    def create_shop(self, shop_id: str, user_id: str, name: str, shop_type: str = "retail") -> ShopProfile:
-        profile = ShopProfile(shop_id=shop_id, user_id=user_id, name=name, shop_type=shop_type)
+    def create_shop(
+        self,
+        shop_id: str,
+        user_id: str,
+        name: str,
+        shop_type: str = "retail",
+        language: str = "en",
+        seed_catalog: bool | None = None,
+    ) -> ShopProfile:
+        lang = language if language in SUPPORTED_LANGUAGES else "en"
+        profile = ShopProfile(
+            shop_id=shop_id,
+            user_id=user_id,
+            name=name,
+            shop_type=shop_type,
+            language=lang,
+        )
         self.shops[shop_id] = profile
-        if self.seed_reference:
+        should_seed = self.seed_reference if seed_catalog is None else seed_catalog
+        if should_seed:
             self.matchers[shop_id] = ItemMatcher.from_reference_csv()
         else:
             self.matchers[shop_id] = ItemMatcher(items=[])
@@ -89,6 +107,22 @@ class GullakStore:
         self.purchases.setdefault(shop_id, [])
         self.sales.setdefault(shop_id, [])
         return profile
+
+    def set_shop_language(self, shop_id: str, language: str) -> ShopProfile:
+        shop = self._ensure_shop(shop_id)
+        if language not in SUPPORTED_LANGUAGES:
+            raise ValueError(f"Unsupported language '{language}'. Choose from: {list(SUPPORTED_LANGUAGES)}")
+        shop.language = language
+        return shop
+
+    def add_shop_item(self, shop_id: str, item: CatalogItem) -> CatalogItem:
+        self._ensure_shop(shop_id)
+        self.matchers[shop_id].add_item(item)
+        return item
+
+    def add_shop_alias(self, shop_id: str, alias_text: str, item_id: str) -> None:
+        self._ensure_shop(shop_id)
+        self.matchers[shop_id].add_alias(alias_text, item_id)
 
     def _ensure_shop(self, shop_id: str) -> ShopProfile:
         if shop_id not in self.shops:
@@ -330,8 +364,10 @@ class GullakStore:
         shop_id: str,
         target_date: date,
         advice_config: AdviceConfig | None = None,
+        language: str | None = None,
     ) -> dict[str, Any]:
-        self._ensure_shop(shop_id)
+        shop = self._ensure_shop(shop_id)
+        lang = language if (language and language in SUPPORTED_LANGUAGES) else shop.language
         shop_sales = self.sales.get(shop_id, [])
         unmatched = self.unmatched_counts.get((shop_id, target_date), 0)
         mart: DailyProfitMart = compute_daily_mart(
@@ -401,10 +437,13 @@ class GullakStore:
             snapshots=snapshots,
             as_of=target_date,
             config=advice_config,
+            language=lang,
         )
 
         return {
             "shop_id": shop_id,
+            "shop_type": shop.shop_type,
+            "language": lang,
             "date": target_date.isoformat(),
             "sales": mart.sales,
             "cost_of_goods": mart.cost_of_goods,

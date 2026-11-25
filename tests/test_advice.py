@@ -97,3 +97,25 @@ def test_watch_margin_below_cost_and_thin_margin():
     assert len(summary.watch_margin) == 2
     assert summary.watch_margin[0].reason == "below_cost"
     assert summary.watch_margin[1].reason == "thin_margin"
+
+
+def test_advice_multilingual_output():
+    snap = ItemInventorySnapshot(
+        item_id="paracetamol",
+        name_en="Paracetamol 500mg",
+        name_hi="पैरासिटामोल",
+        stock=2.0,
+        unit="pc",
+        unit_hi="पत्ता",
+        pack_qty=10.0,
+        pack_hi="बॉक्स",
+        cost=20.0,
+        price=25.0,
+        daily_demand=3.0,
+    )
+    for lang in ("en", "hi", "mr", "gu", "ta", "te"):
+        advice = evaluate_item_advice(snap, language=lang)
+        assert len(advice) == 1
+        assert advice[0].language == lang
+        assert advice[0].message
+

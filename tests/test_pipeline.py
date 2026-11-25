@@ -194,3 +194,78 @@ def test_synthetic_pipeline_and_kit_benchmark():
         bench = benchmark_handwriting_kit(kit_truth)
         assert bench["auto_matched_pct"] >= 90.0
         assert bench["exact_item_accuracy_pct"] >= 90.0
+
+
+def test_custom_shop_type_and_language_selection():
+    app = create_app(seed_reference=False)
+    client = TestClient(app)
+
+    langs = client.get("/languages").json()
+    assert {"en", "hi", "mr", "gu", "ta", "te"}.issubset(langs.keys())
+
+    # Create a pharmacy shop with Marathi selected and no kirana seed catalog
+    shop_res = client.post("/shops", json={
+        "shop_id": "med-01",
+        "name": "Deshmukh Medical",
+        "shop_type": "pharmacy",
+        "language": "mr",
+        "seed_catalog": False,
+    })
+    assert shop_res.status_code == 200
+    assert shop_res.json()["shop_type"] == "pharmacy"
+    assert shop_res.json()["language"] == "mr"
+
+    # Add custom pharmacy item + regional alias
+    assert client.post("/shops/med-01/items", json={
+        "item_id": "para_500",
+        "name_en": "Paracetamol 500mg",
+        "name_local": "पॅरासिटामॉल",
+        "base_unit": "pc",
+        "pack_qty": 10,
+    }).status_code == 200
+
+    assert client.post("/shops/med-01/aliases", json={
+        "alias_text": "dolo",
+        "item_id": "para_500",
+    }).status_code == 200
+
+    # Approve wholesale bill
+    bill = client.post("/ingest/extracted", json={
+        "image_hash": "med-bill-1",
+        "shop_id": "med-01",
+        "kind": "bill",
+        "page_date": "2026-11-20",
+        "written_total": 100.0,
+        "lines": [
+            {"line_no": 1, "text": "Paracetamol 500mg 10 pc 100", "item_name": "Paracetamol 500mg", "qty": 10, "unit": "pc", "amount": 100}
+        ],
+    }).json()
+    assert client.post(f"/bills/{bill['bill_id']}/approve", json={
+        "lines": [{"line_no": 1, "item_id": "para_500", "qty": 10, "unit_cost": 10.0, "selling_price": 10.2}]
+    }).status_code == 200
+
+    # Sell using alias 'dolo'
+    sale = client.post("/ingest/extracted", json={
+        "image_hash": "med-sale-1",
+        "shop_id": "med-01",
+        "kind": "sales",
+        "page_date": "2026-11-21",
+        "written_total": 81.6,
+        "lines": [
+            {"line_no": 1, "text": "dolo 8 pc 81.6", "item_name": "dolo", "qty": 8, "unit": "pc", "amount": 81.6}
+        ],
+    }).json()
+    assert sale["status"] == "processed"
+
+    summary_mr = client.get("/shops/med-01/daily-summary", params={"target_date": "2026-11-21"}).json()
+    assert summary_mr["language"] == "mr"
+    assert summary_mr["shop_type"] == "pharmacy"
+    assert len(summary_mr["advice"]["watch_margin"]) == 1
+    assert summary_mr["advice"]["watch_margin"][0]["language"] == "mr"
+
+    # Switch shop language to Gujarati
+    assert client.patch("/shops/med-01/language", json={"language": "gu"}).status_code == 200
+    summary_gu = client.get("/shops/med-01/daily-summary", params={"target_date": "2026-11-21"}).json()
+    assert summary_gu["language"] == "gu"
+    assert summary_gu["advice"]["watch_margin"][0]["language"] == "gu"
+
