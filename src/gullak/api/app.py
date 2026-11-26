@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from gullak.i18n import SUPPORTED_LANGUAGES
 from gullak.pipeline.contracts import ExtractedLine, ExtractedPage, PhotoKind
+from gullak.pipeline.extract import GeminiVisionExtractor, VisionExtractionError
 from gullak.pipeline.matching import CatalogItem
 from gullak.pipeline.store import GullakStore
 
@@ -48,10 +49,18 @@ class ResolveReviewRequest(BaseModel):
     lines: list[ExtractedLine]
 
 
-def create_app(raw_dir: Path | None = None, seed_reference: bool = True) -> FastAPI:
+def create_app(
+    raw_dir: Path | None = None,
+    seed_reference: bool = True,
+    extractor: GeminiVisionExtractor | None = None,
+) -> FastAPI:
     app = FastAPI(title="Gullak API", version="0.1.0")
     store = GullakStore(raw_dir=raw_dir, seed_reference=seed_reference)
+    ocr = extractor or GeminiVisionExtractor(
+        cache_dir=(raw_dir / "_ocr_cache") if raw_dir else None
+    )
     app.state.store = store
+    app.state.extractor = ocr
 
     @app.get("/health")
     def health() -> dict[str, str]:
@@ -137,6 +146,7 @@ def create_app(raw_dir: Path | None = None, seed_reference: bool = True) -> Fast
         shop_id: str = Form(...),
         kind: PhotoKind = Form(...),
         file: UploadFile = File(...),
+        auto_extract: bool = Form(False),
     ) -> dict[str, Any]:
         content = await file.read()
         if not content:
@@ -147,7 +157,7 @@ def create_app(raw_dir: Path | None = None, seed_reference: bool = True) -> Fast
             content=content,
             filename=file.filename or "photo.jpg",
         )
-        return {
+        response: dict[str, Any] = {
             "image_hash": rec.image_hash,
             "shop_id": rec.shop_id,
             "kind": rec.kind.value,
@@ -155,6 +165,22 @@ def create_app(raw_dir: Path | None = None, seed_reference: bool = True) -> Fast
             "duplicate": is_duplicate,
             "file_path": rec.file_path,
         }
+        if auto_extract:
+            mime_type = file.content_type or "image/jpeg"
+            try:
+                page = ocr.extract_page(
+                    image_bytes=content,
+                    image_hash=rec.image_hash,
+                    shop_id=shop_id,
+                    kind=kind,
+                    mime_type=mime_type,
+                )
+            except VisionExtractionError as exc:
+                raise HTTPException(status_code=503, detail=str(exc)) from exc
+            pipeline_res = store.process_extracted_page(page)
+            response["extraction"] = pipeline_res
+            response["status"] = store.raw_images[f"{shop_id}:{rec.image_hash}"].status
+        return response
 
     @app.post("/ingest/extracted")
     def ingest_extracted(page: ExtractedPage) -> dict[str, Any]:

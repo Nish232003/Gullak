@@ -2,7 +2,7 @@
 
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688?logo=fastapi&logoColor=white)
-![Tests](https://img.shields.io/badge/Tests-20%20Passing-2ea44f)
+![Tests](https://img.shields.io/badge/Tests-23%20Passing-2ea44f)
 ![Languages](https://img.shields.io/badge/Languages-6%20Supported-orange)
 
 Small shopkeepers record sales in handwritten registers and keep paper wholesale bills, leaving them to estimate their daily profit instead of knowing it. **Gullak** turns photos of those registers and bills into accurate daily profit, top-selling items, and clear restock guidance in the owner's chosen language — built for retail, wholesale, pharmacy, hardware, grocery, and general stores.
@@ -51,8 +51,10 @@ python -m gullak.pipeline.runner --days 30
 ### Run Tests & Start the API
 
 ```powershell
-pytest -v                               # Run full test suite (20 tests)
+# Run the full test suite (23 tests)
+pytest -v                               # Run full test suite (23 tests)
 uvicorn gullak.api.app:app --reload     # Start API (docs at http://127.0.0.1:8000/docs)
+# Optional: set GEMINI_API_KEY for live Vision OCR via auto_extract=true on /ingest/photo
 ```
 
 ### Generate Synthetic Data & Handwriting Kit
@@ -105,7 +107,7 @@ python -m gullak.synth kit              # Generate 30 register pages -> data/han
 | `PATCH` | `/shops/{shop_id}/language` | Update a shop's preferred language |
 | `POST` | `/shops/{shop_id}/items` | Add custom catalog items for any shop type |
 | `POST` | `/shops/{shop_id}/aliases` | Add local or regional item aliases |
-| `POST` | `/ingest/photo` | Upload photo with SHA-256 content-hash deduplication |
+| `POST` | `/ingest/photo` | Upload photo with SHA-256 dedup (optional `auto_extract=true` for Gemini Vision OCR) |
 | `POST` | `/ingest/extracted` | Validate, match, and process extracted register/bill lines |
 | `POST` | `/bills/{bill_id}/approve` | Approve wholesale bill lines, create FIFO lots, and update prices |
 | `GET` | `/shops/{shop_id}/review-queue` | List pages and lines awaiting owner confirmation |
@@ -117,11 +119,11 @@ python -m gullak.synth kit              # Generate 30 register pages -> data/han
 
 ## Verification & Benchmarks
 
-Verified with `pytest -v` (**20/20 passing**) and `python -m gullak.pipeline.runner --days 30`:
+Verified with `pytest -v` (**23/23 passing**) and `python -m gullak.pipeline.runner --days 30`:
 
 | Check | Result |
 | --- | --- |
-| **Unit & End-to-End Tests** | `20 passed` across advice, validation, matching, FIFO, API, and synthetic simulator |
+| **Unit & End-to-End Tests** | `23 passed` across Vision OCR, advice, validation, matching, FIFO, API, and simulator |
 | **Handwriting Kit (`truth.json`)** | `30 pages` / `450 lines` — **100.0%** auto-matched, **100.0%** exact item accuracy |
 | **30-Day Synthetic Replay** | `₹343,000.00` computed sales vs `₹343,000.00` truth sales (`₹44,583.99` FIFO gross profit) |
 
@@ -148,6 +150,7 @@ Verified with `pytest -v` (**20/20 passing**) and `python -m gullak.pipeline.run
 │   ├── api/app.py              # FastAPI service
 │   ├── pipeline/
 │   │   ├── contracts.py        # Pydantic data contracts
+│   │   ├── extract.py          # Gemini Vision OCR extractor with hash caching
 │   │   ├── validate.py         # Digit normalization & quality gates
 │   │   ├── matching.py         # Exact, alias, and RapidFuzz matching + unit conversion
 │   │   ├── costing.py          # FIFO lot allocation, SCD2 pricing, daily profit mart
